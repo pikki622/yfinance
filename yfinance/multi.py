@@ -82,12 +82,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     if ignore_tz is None:
         # Set default value depending on interval
-        if interval[1:] in ['m', 'h']:
-            # Intraday
-            ignore_tz = False
-        else:
-            ignore_tz = True
-
+        ignore_tz = interval[1:] not in ['m', 'h']
     # create ticker list
     tickers = tickers if isinstance(
         tickers, (list, set, tuple)) else tickers.replace(',', ' ').split()
@@ -104,7 +99,7 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
 
     tickers = _tickers_
 
-    tickers = list(set([ticker.upper() for ticker in tickers]))
+    tickers = list({ticker.upper() for ticker in tickers})
 
     if progress:
         shared._PROGRESS_BAR = utils.ProgressBar(len(tickers), 'completed')
@@ -128,9 +123,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
         while len(shared._DFS) < len(tickers):
             _time.sleep(0.01)
 
-    # download synchronously
     else:
-        for i, ticker in enumerate(tickers):
+        for ticker in tickers:
             data = _download_one(ticker, period=period, interval=interval,
                                  start=start, end=end, prepost=prepost,
                                  actions=actions, auto_adjust=auto_adjust,
@@ -152,8 +146,8 @@ def download(tickers, start=None, end=None, actions=False, threads=True, ignore_
                          v for v in list(shared._ERRORS.items())]))
 
     if ignore_tz:
-        for tkr in shared._DFS.keys():
-            if (shared._DFS[tkr] is not None) and (shared._DFS[tkr].shape[0] > 0):
+        for tkr, value in shared._DFS.items():
+            if value is not None and shared._DFS[tkr].shape[0] > 0:
                 shared._DFS[tkr].index = shared._DFS[tkr].index.tz_localize(None)
 
     if len(tickers) == 1:

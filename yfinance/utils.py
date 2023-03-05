@@ -71,7 +71,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
 
     from .base import _BASE_URL_
     session = session or _requests
-    url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
+    url = f"{_BASE_URL_}/v1/finance/search?q={isin}"
     data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
     try:
         data = data.json()
@@ -116,10 +116,16 @@ def empty_df(index=None):
 
 
 def empty_earnings_dates_df():
-    empty = _pd.DataFrame(
-        columns=["Symbol", "Company", "Earnings Date",
-                 "EPS Estimate", "Reported EPS", "Surprise(%)"])
-    return empty
+    return _pd.DataFrame(
+        columns=[
+            "Symbol",
+            "Company",
+            "Earnings Date",
+            "EPS Estimate",
+            "Reported EPS",
+            "Surprise(%)",
+        ]
+    )
 
 
 def build_template(data):
@@ -139,39 +145,39 @@ def build_template(data):
     level_detail = []  # Record the level of each line item of the income statement ("Operating Revenue" and "Excise Taxes" sum to return "Total Revenue" we need to keep track of this)
     for key in data['template']:
         # Loop through the json to retreive the exact financial order whilst appending to the objects
-        template_ttm_order.append('trailing{}'.format(key['key']))
-        template_annual_order.append('annual{}'.format(key['key']))
-        template_order.append('{}'.format(key['key']))
+        template_ttm_order.append(f"trailing{key['key']}")
+        template_annual_order.append(f"annual{key['key']}")
+        template_order.append(f"{key['key']}")
         level_detail.append(0)
         if 'children' in key:
             for child1 in key['children']:  # Level 1
-                template_ttm_order.append('trailing{}'.format(child1['key']))
-                template_annual_order.append('annual{}'.format(child1['key']))
-                template_order.append('{}'.format(child1['key']))
+                template_ttm_order.append(f"trailing{child1['key']}")
+                template_annual_order.append(f"annual{child1['key']}")
+                template_order.append(f"{child1['key']}")
                 level_detail.append(1)
                 if 'children' in child1:
                     for child2 in child1['children']:  # Level 2
-                        template_ttm_order.append('trailing{}'.format(child2['key']))
-                        template_annual_order.append('annual{}'.format(child2['key']))
-                        template_order.append('{}'.format(child2['key']))
+                        template_ttm_order.append(f"trailing{child2['key']}")
+                        template_annual_order.append(f"annual{child2['key']}")
+                        template_order.append(f"{child2['key']}")
                         level_detail.append(2)
                         if 'children' in child2:
                             for child3 in child2['children']:  # Level 3
-                                template_ttm_order.append('trailing{}'.format(child3['key']))
-                                template_annual_order.append('annual{}'.format(child3['key']))
-                                template_order.append('{}'.format(child3['key']))
+                                template_ttm_order.append(f"trailing{child3['key']}")
+                                template_annual_order.append(f"annual{child3['key']}")
+                                template_order.append(f"{child3['key']}")
                                 level_detail.append(3)
                                 if 'children' in child3:
                                     for child4 in child3['children']:  # Level 4
-                                        template_ttm_order.append('trailing{}'.format(child4['key']))
-                                        template_annual_order.append('annual{}'.format(child4['key']))
-                                        template_order.append('{}'.format(child4['key']))
+                                        template_ttm_order.append(f"trailing{child4['key']}")
+                                        template_annual_order.append(f"annual{child4['key']}")
+                                        template_order.append(f"{child4['key']}")
                                         level_detail.append(4)
                                         if 'children' in child4:
                                             for child5 in child4['children']:  # Level 5
-                                                template_ttm_order.append('trailing{}'.format(child5['key']))
-                                                template_annual_order.append('annual{}'.format(child5['key']))
-                                                template_order.append('{}'.format(child5['key']))
+                                                template_ttm_order.append(f"trailing{child5['key']}")
+                                                template_annual_order.append(f"annual{child5['key']}")
+                                                template_order.append(f"{child5['key']}")
                                                 level_detail.append(5)
     return template_ttm_order, template_annual_order, template_order, level_detail
 
@@ -189,14 +195,13 @@ def retreive_financial_details(data):
     for key in data['timeSeries']:  # Loop through the time series data to grab the key financial figures.
         try:
             if len(data['timeSeries'][key]) > 0:
-                time_series_dict = {}
-                time_series_dict['index'] = key
+                time_series_dict = {'index': key}
                 for each in data['timeSeries'][key]:  # Loop through the years
-                    if each == None:
+                    if each is None:
                         continue
                     else:
                         time_series_dict[each['asOfDate']] = each['reportedValue']
-                    # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
+                                    # time_series_dict["{}".format(each['asOfDate'])] = data['timeSeries'][key][each]['reportedValue']
                 if 'trailing' in key:
                     TTM_dicts.append(time_series_dict)
                 elif 'annual' in key:
@@ -223,7 +228,7 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
         TTM = TTM.reindex(ttm_order)
         # Add 'TTM' prefix to all column names, so if combined we can tell
         # the difference between actuals and TTM (similar to yahoo finance).
-        TTM.columns = ['TTM ' + str(col) for col in TTM.columns]
+        TTM.columns = [f'TTM {str(col)}' for col in TTM.columns]
         TTM.index = TTM.index.str.replace(r'trailing', '')
         _statement = Annual.merge(TTM, left_index=True, right_index=True)
     else:
@@ -233,8 +238,7 @@ def format_annual_financial_statement(level_detail, annual_dicts, annual_order, 
     _statement['level_detail'] = level_detail
     _statement = _statement.set_index([_statement.index, 'level_detail'])
     _statement = _statement[sorted(_statement.columns, reverse=True)]
-    _statement = _statement.dropna(how='all')
-    return _statement
+    return _statement.dropna(how='all')
 
 
 def format_quarterly_financial_statement(_statement, level_detail, order):
@@ -257,7 +261,7 @@ def format_quarterly_financial_statement(_statement, level_detail, order):
 def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]] = None) -> List[str]:
     if isinstance(strings, str) or not hasattr(strings, '__iter__'):
         raise TypeError("camel2title() 'strings' argument must be iterable of strings")
-    if len(strings) == 0:
+    if not strings:
         return strings
     if not isinstance(strings[0], str):
         raise TypeError("camel2title() 'strings' argument must be iterable of strings")
@@ -294,15 +298,14 @@ def camel2title(strings: List[str], sep: str = ' ', acronyms: Optional[List[str]
 
     # Apply str.title() to non-acronym words
     strings = [s.split(sep) for s in strings]
-    strings = [[j.title() if not j in acronyms else j for j in s] for s in strings]
+    strings = [[j.title() if j not in acronyms else j for j in s] for s in strings]
     strings = [sep.join(s) for s in strings]
 
     return strings
 
 
 def snake_case_2_camelCase(s):
-    sc = s.split('_')[0] + ''.join(x.title() for x in s.split('_')[1:])
-    return sc
+    return s.split('_')[0] + ''.join(x.title() for x in s.split('_')[1:])
 
 
 def _parse_user_dt(dt, exchange_tz):
@@ -711,9 +714,11 @@ def format_history_metadata(md):
                 del md["currentTradingPeriod"][m]["gmtoffset"]
                 del md["currentTradingPeriod"][m]["timezone"]
 
-    if "tradingPeriods" in md:
-        if md["tradingPeriods"] == {"pre":[], "post":[]}:
-            del md["tradingPeriods"]
+    if "tradingPeriods" in md and md["tradingPeriods"] == {
+        "pre": [],
+        "post": [],
+    }:
+        del md["tradingPeriods"]
 
     if "tradingPeriods" in md:
         tps = md["tradingPeriods"]
@@ -747,7 +752,7 @@ def format_history_metadata(md):
         if posts_dict is not None:
             post_df = _dict_to_table(posts_dict)
             df = df.merge(post_df.rename(columns={"start":"post_start", "end":"post_end"}), left_index=True, right_index=True)
-            df_cols = df_cols+["post_start", "post_end"]
+            df_cols += ["post_start", "post_end"]
         df = df[df_cols]
         df.index.name = "Date"
 
@@ -766,8 +771,7 @@ class ProgressBar:
         self.elapsed = 1
 
     def completed(self):
-        if self.elapsed > self.iterations:
-            self.elapsed = self.iterations
+        self.elapsed = min(self.elapsed, self.iterations)
         self.update_iteration(1)
         print('\r' + str(self), end='')
         _sys.stdout.flush()
@@ -787,19 +791,19 @@ class ProgressBar:
     def update_iteration(self, val=None):
         val = val if val is not None else self.elapsed / float(self.iterations)
         self.__update_amount(val * 100.0)
-        self.prog_bar += '  %s of %s %s' % (
-            self.elapsed, self.iterations, self.text)
+        self.prog_bar += f'  {self.elapsed} of {self.iterations} {self.text}'
 
     def __update_amount(self, new_amount):
         percent_done = int(round((new_amount / 100.0) * 100.0))
         all_full = self.width - 2
         num_hashes = int(round((percent_done / 100.0) * all_full))
         self.prog_bar = '[' + self.fill_char * \
-                        num_hashes + ' ' * (all_full - num_hashes) + ']'
+                            num_hashes + ' ' * (all_full - num_hashes) + ']'
         pct_place = (len(self.prog_bar) // 2) - len(str(percent_done))
         pct_string = '%d%%' % percent_done
-        self.prog_bar = self.prog_bar[0:pct_place] + \
-                        (pct_string + self.prog_bar[pct_place + len(pct_string):])
+        self.prog_bar = self.prog_bar[:pct_place] + (
+            pct_string + self.prog_bar[pct_place + len(pct_string) :]
+        )
 
     def __str__(self):
         return str(self.prog_bar)
@@ -836,8 +840,7 @@ class _KVStore:
 
     def get(self, key: str) -> Union[str, None]:
         """Get value for key if it exists else returns None"""
-        item = self.conn.execute('select value from "kv" where key=?', (key,))
-        if item:
+        if item := self.conn.execute('select value from "kv" where key=?', (key,)):
             return next(item, (None,))[0]
 
     def set(self, key: str, value: str) -> None:
@@ -846,7 +849,7 @@ class _KVStore:
             self.conn.commit()
 
     def bulk_set(self, kvdata: Dict[str, str]):
-        records = tuple(i for i in kvdata.items())
+        records = tuple(kvdata.items())
         with self._cache_mutex:
             self.conn.executemany('replace into "kv" (key, value) values (?,?)', records)
             self.conn.commit()
@@ -875,12 +878,14 @@ class _TzCache:
             try:
                 _os.makedirs(self._db_dir)
             except OSError as err:
-                raise _TzCacheException("Error creating TzCache folder: '{}' reason: {}"
-                                        .format(self._db_dir, err))
+                raise _TzCacheException(
+                    f"Error creating TzCache folder: '{self._db_dir}' reason: {err}"
+                )
 
         elif not (_os.access(self._db_dir, _os.R_OK) and _os.access(self._db_dir, _os.W_OK)):
-            raise _TzCacheException("Cannot read and write in TzCache folder: '{}'"
-                                    .format(self._db_dir, ))
+            raise _TzCacheException(
+                f"Cannot read and write in TzCache folder: '{self._db_dir}'"
+            )
 
     def lookup(self, tkr):
         return self.tz_db.get(tkr)
@@ -889,7 +894,7 @@ class _TzCache:
         if tz is None:
             self.tz_db.delete(tkr)
         elif self.tz_db.get(tkr) is not None:
-            raise Exception("Tkr {} tz already in cache".format(tkr))
+            raise Exception(f"Tkr {tkr} tz already in cache")
         else:
             self.tz_db.set(tkr, tz)
 
@@ -944,7 +949,7 @@ def get_tz_cache():
             try:
                 _tz_cache = _TzCache()
             except _TzCacheException as err:
-                print("Failed to create TzCache, reason: {}".format(err))
+                print(f"Failed to create TzCache, reason: {err}")
                 print("TzCache will not be used.")
                 print("Tip: You can direct cache to use a different location with 'set_tz_cache_location(mylocation)'")
                 _tz_cache = _TzCacheDummy()

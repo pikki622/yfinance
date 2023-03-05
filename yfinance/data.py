@@ -34,9 +34,9 @@ def lru_cache_freezeargs(func):
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        args = tuple([frozendict(arg) if isinstance(arg, dict) else arg for arg in args])
+        args = tuple(frozendict(arg) if isinstance(arg, dict) else arg for arg in args)
         kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
-        args = tuple([tuple(arg) if isinstance(arg, list) else arg for arg in args])
+        args = tuple(tuple(arg) if isinstance(arg, list) else arg for arg in args)
         kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
         return func(*args, **kwargs)
 
@@ -49,14 +49,14 @@ def lru_cache_freezeargs(func):
 
 def _extract_extra_keys_from_stores(data):
     new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
-    new_keys_values = set([data[k] for k in new_keys])
+    new_keys_values = {data[k] for k in new_keys}
 
     # Maybe multiple keys have same value - keep one of each
     new_keys_uniq = []
     new_keys_uniq_values = set()
     for k in new_keys:
         v = data[k]
-        if not v in new_keys_uniq_values:
+        if v not in new_keys_uniq_values:
             new_keys_uniq.append(k)
             new_keys_uniq_values.add(v)
 
@@ -81,7 +81,7 @@ def decrypt_cryptojs_aes_stores(data, keys=None):
         password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
 
     encrypted_stores = b64decode(encrypted_stores)
-    assert encrypted_stores[0:8] == b"Salted__"
+    assert encrypted_stores[:8] == b"Salted__"
     salt = encrypted_stores[8:16]
     encrypted_stores = encrypted_stores[16:]
 
@@ -138,7 +138,7 @@ def decrypt_cryptojs_aes_stores(data, keys=None):
             plaintext = plaintext.decode("utf-8")
         return plaintext
 
-    if not password is None:
+    if password is not None:
         try:
             key, iv = _EVPKDF(password, salt, keySize=32, ivSize=16, iterations=1, hashAlgorithm="md5")
         except:
@@ -181,13 +181,13 @@ class TickerData:
 
     def get(self, url, user_agent_headers=None, params=None, proxy=None, timeout=30):
         proxy = self._get_proxy(proxy)
-        response = self._session.get(
+        return self._session.get(
             url=url,
             params=params,
             proxies=proxy,
             timeout=timeout,
-            headers=user_agent_headers or self.user_agent_headers)
-        return response
+            headers=user_agent_headers or self.user_agent_headers,
+        )
 
     @lru_cache_freezeargs
     @lru_cache(maxsize=cache_maxsize)
@@ -207,7 +207,7 @@ class TickerData:
 
         key_count = 4
         re_script = soup.find("script", string=re.compile("root.App.main")).text
-        re_data = json.loads(re.search("root.App.main\s+=\s+(\{.*\})", re_script).group(1))
+        re_data = json.loads(re.search("root.App.main\s+=\s+(\{.*\})", re_script)[1])
         re_data.pop("context", None)
         key_list = list(re_data.keys())
         if re_data.get("plugins"):  # 1) attempt to get last 4 keys after plugins
@@ -221,11 +221,11 @@ class TickerData:
                         if not re_data.get(k):
                             missing_val = True
                             break
-                        re_obj.update({k: re_data.get(k)})
+                        re_obj[k] = re_data.get(k)
                     if not missing_val:
                         result = re_obj
 
-        if not result is None:
+        if result is not None:
             return [''.join(result.values())]
 
         re_keys = []    # 2) attempt scan main.js file approach to get keys
@@ -236,7 +236,6 @@ class TickerData:
             #
             if response_js.status_code != 200:
                 time.sleep(random.randrange(10, 20))
-                response_js.close()
             else:
                 r_data = response_js.content.decode("utf8")
                 re_list = [
@@ -247,7 +246,7 @@ class TickerData:
                     if len(re_sublist) == key_count:
                         re_keys = [sl.replace('t["', '').replace('"]', '') for sl in re_sublist]
                         break
-                response_js.close()
+            response_js.close()
             if len(re_keys) == key_count:
                 break
         if len(re_keys) > 0:
@@ -257,7 +256,7 @@ class TickerData:
                 if not re_data.get(k):
                     missing_val = True
                     break
-                re_obj.update({k: re_data.get(k)})
+                re_obj[k] = re_data.get(k)
             if not missing_val:
                 return [''.join(re_obj.values())]
 
@@ -270,9 +269,9 @@ class TickerData:
         get_json_data_stores returns a python dictionary of the data stores in yahoo finance web page.
         '''
         if sub_page:
-            ticker_url = "{}/{}/{}".format(_SCRAPE_URL_, self.ticker, sub_page)
+            ticker_url = f"{_SCRAPE_URL_}/{self.ticker}/{sub_page}"
         else:
-            ticker_url = "{}/{}".format(_SCRAPE_URL_, self.ticker)
+            ticker_url = f"{_SCRAPE_URL_}/{self.ticker}"
 
         response = self.get(url=ticker_url, proxy=proxy)
         html = response.text
@@ -309,10 +308,12 @@ class TickerData:
 
         # Decrypt!
         stores = decrypt_cryptojs_aes_stores(data, keys)
-        if stores is None:
-            # Maybe Yahoo returned old format, not encrypted
-            if "context" in data and "dispatcher" in data["context"]:
-                stores = data['context']['dispatcher']['stores']
+        if (
+            stores is None
+            and "context" in data
+            and "dispatcher" in data["context"]
+        ):
+            stores = data['context']['dispatcher']['stores']
         if stores is None:
             raise Exception(f"{self.ticker}: Failed to extract data stores from web request")
 

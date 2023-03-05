@@ -126,7 +126,7 @@ class Quote:
             quote_summary_store = json_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No summary info found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            print(f'- {self._data.ticker}: {err_msg}')
             return None
 
         # sustainability
@@ -154,7 +154,7 @@ class Quote:
                      'defaultKeyStatistics', 'assetProfile', 'summaryDetail']
             for item in items:
                 if isinstance(quote_summary_store.get(item), dict):
-                    self._info.update(quote_summary_store[item])
+                    self._info |= quote_summary_store[item]
         except Exception:
             pass
 
@@ -188,13 +188,14 @@ class Quote:
 
         self._info['logo_url'] = ""
         try:
-            if not 'website' in self._info:
-                self._info['logo_url'] = 'https://logo.clearbit.com/%s.com' % \
-                                         self._info['shortName'].split(' ')[0].split(',')[0]
+            if 'website' not in self._info:
+                self._info[
+                    'logo_url'
+                ] = f"https://logo.clearbit.com/{self._info['shortName'].split(' ')[0].split(',')[0]}.com"
             else:
                 domain = self._info['website'].split(
                     '://')[1].split('/')[0].replace('www.', '')
-                self._info['logo_url'] = 'https://logo.clearbit.com/%s' % domain
+                self._info['logo_url'] = f'https://logo.clearbit.com/{domain}'
         except Exception:
             pass
 
@@ -245,9 +246,7 @@ class Quote:
         if self._info is None:
             return
 
-        # Complementary key-statistics. For now just want 'trailing PEG ratio'
-        keys = {"trailingPegRatio"}
-        if keys:
+        if keys := {"trailingPegRatio"}:
             # Simplified the original scrape code for key-statistics. Very expensive for fetching
             # just one value, best if scraping most/all:
             #
@@ -270,8 +269,7 @@ class Quote:
             #     pass
             #
             # For just one/few variable is faster to query directly:
-            url = "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{}?symbol={}".format(
-                self._data.ticker, self._data.ticker)
+            url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{self._data.ticker}?symbol={self._data.ticker}"
             for k in keys:
                 url += "&type=" + k
             # Request 6 months of data
@@ -285,12 +283,7 @@ class Quote:
             json_data = json.loads(json_str)
             try:
                 key_stats = json_data["timeseries"]["result"][0]
-                if k not in key_stats:
-                    # Yahoo website prints N/A, indicates Yahoo lacks necessary data to calculate
-                    v = None
-                else:
-                    # Select most recent (last) raw value in list:
-                    v = key_stats[k][-1]["reportedValue"]["raw"]
+                v = None if k not in key_stats else key_stats[k][-1]["reportedValue"]["raw"]
             except Exception:
                 v = None
             self._info[k] = v

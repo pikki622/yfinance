@@ -28,7 +28,7 @@ from . import Ticker, multi
 class Tickers:
 
     def __repr__(self):
-        return 'yfinance.Tickers object <%s>' % ",".join(self.symbols)
+        return f'yfinance.Tickers object <{",".join(self.symbols)}>'
 
     def __init__(self, tickers, session=None):
         tickers = tickers if isinstance(

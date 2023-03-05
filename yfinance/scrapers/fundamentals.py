@@ -50,7 +50,7 @@ class Fundamentals:
             self._fin_data_quote = self._financials_data['QuoteSummaryStore']
         except KeyError:
             err_msg = "No financials data found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            print(f'- {self._data.ticker}: {err_msg}')
             return None
 
     def _scrape_earnings(self, proxy):
@@ -134,9 +134,11 @@ class Financials:
         allowed_timescales = ["yearly", "quarterly"]
 
         if name not in allowed_names:
-            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
+            raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
-            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
+            raise ValueError(
+                f"Illegal argument: timescale must be one of: {allowed_names}"
+            )
 
         try:
             statement = self._create_financials_table(name, timescale, proxy)
@@ -189,14 +191,14 @@ class Financials:
 
         # Step 2: construct url:
         ts_url_base = \
-            "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}" \
-                .format(self._data.ticker)
+                "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{0}?symbol={0}" \
+                    .format(self._data.ticker)
 
-        url = ts_url_base + "&type=" + ",".join([timescale + k for k in keys])
+        url = f"{ts_url_base}&type=" + ",".join([timescale + k for k in keys])
         # Yahoo returns maximum 4 years or 5 quarters, regardless of start_dt:
         start_dt = datetime.datetime(2016, 12, 31)
         end = pd.Timestamp.utcnow().ceil("D")
-        url += "&period1={}&period2={}".format(int(start_dt.timestamp()), int(end.timestamp()))
+        url += f"&period1={int(start_dt.timestamp())}&period2={int(end.timestamp())}"
 
         # Step 3: fetch and reshape data
         json_str = self._data.cache_get(url=url, proxy=proxy).text
@@ -257,9 +259,11 @@ class Financials:
         allowed_timescales = ["yearly", "quarterly"]
 
         if name not in allowed_names:
-            raise ValueError("Illegal argument: name must be one of: {}".format(allowed_names))
+            raise ValueError(f"Illegal argument: name must be one of: {allowed_names}")
         if timescale not in allowed_timescales:
-            raise ValueError("Illegal argument: timescale must be one of: {}".format(allowed_names))
+            raise ValueError(
+                f"Illegal argument: timescale must be one of: {allowed_names}"
+            )
 
         try:
             statement = self._create_financials_table_old(name, timescale, proxy)
@@ -274,16 +278,16 @@ class Financials:
         data_stores = self._data.get_json_data_stores("financials", proxy)
 
         # Fetch raw data
-        if not "QuoteSummaryStore" in data_stores:
-            raise YFinanceDataException(f"Yahoo not returning legacy financials data")
+        if "QuoteSummaryStore" not in data_stores:
+            raise YFinanceDataException("Yahoo not returning legacy financials data")
         data = data_stores["QuoteSummaryStore"]
 
-        if name == "cash-flow":
-            key1 = "cashflowStatement"
-            key2 = "cashflowStatements"
-        elif name == "balance-sheet":
+        if name == "balance-sheet":
             key1 = "balanceSheet"
             key2 = "balanceSheetStatements"
+        elif name == "cash-flow":
+            key1 = "cashflowStatement"
+            key2 = "cashflowStatements"
         else:
             key1 = "incomeStatement"
             key2 = "incomeStatementHistory"
