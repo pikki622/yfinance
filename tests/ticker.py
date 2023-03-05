@@ -95,8 +95,7 @@ class TestTicker(unittest.TestCase):
     def test_goodTicker(self):
         # that yfinance works when full api is called on same instance of ticker
 
-        tkrs = ["IBM"]
-        tkrs.append("QCSTIX")  # weird ticker, no price history but has previous close
+        tkrs = ["IBM", "QCSTIX"]
         for tkr in tkrs:
             dat = yf.Ticker(tkr, session=self.session)
 
@@ -175,7 +174,7 @@ class TestTickerHistory(unittest.TestCase):
         session = requests_cache.CachedSession(backend='memory')
         ticker = yf.Ticker("GOOGL", session=session)
         ticker.history("1y")
-        actual_urls_called = tuple([r.url for r in session.cache.filter()])
+        actual_urls_called = tuple(r.url for r in session.cache.filter())
         session.close()
         expected_urls = (
             'https://query2.finance.yahoo.com/v8/finance/chart/GOOGL?range=1y&interval=1d&includePrePost=False&events=div%2Csplits%2CcapitalGains',
@@ -711,31 +710,30 @@ class TestTickerInfo(unittest.TestCase):
             fast_info_keys.update(set(ticker.fast_info.keys()))
         fast_info_keys = sorted(list(fast_info_keys))
 
-        key_rename_map = {}
-        key_rename_map["currency"] = "currency"
-        key_rename_map["quote_type"] = "quoteType"
-        key_rename_map["timezone"] = "exchangeTimezoneName"
-
-        key_rename_map["last_price"] = ["currentPrice", "regularMarketPrice"]
-        key_rename_map["open"] = ["open", "regularMarketOpen"]
-        key_rename_map["day_high"] = ["dayHigh", "regularMarketDayHigh"]
-        key_rename_map["day_low"] = ["dayLow", "regularMarketDayLow"]
-        key_rename_map["previous_close"] = ["previousClose"]
-        key_rename_map["regular_market_previous_close"] = ["regularMarketPreviousClose"]
-
-        key_rename_map["fifty_day_average"] = "fiftyDayAverage"
-        key_rename_map["two_hundred_day_average"] = "twoHundredDayAverage"
-        key_rename_map["year_change"] = ["52WeekChange", "fiftyTwoWeekChange"]
-        key_rename_map["year_high"] = "fiftyTwoWeekHigh"
-        key_rename_map["year_low"] = "fiftyTwoWeekLow"
-
-        key_rename_map["last_volume"] = ["volume", "regularMarketVolume"]
-        key_rename_map["ten_day_average_volume"] = ["averageVolume10days", "averageDailyVolume10Day"]
-        key_rename_map["three_month_average_volume"] = "averageVolume"
-
-        key_rename_map["market_cap"] = "marketCap"
-        key_rename_map["shares"] = "sharesOutstanding"
-
+        key_rename_map = {
+            "currency": "currency",
+            "quote_type": "quoteType",
+            "timezone": "exchangeTimezoneName",
+            "last_price": ["currentPrice", "regularMarketPrice"],
+            "open": ["open", "regularMarketOpen"],
+            "day_high": ["dayHigh", "regularMarketDayHigh"],
+            "day_low": ["dayLow", "regularMarketDayLow"],
+            "previous_close": ["previousClose"],
+            "regular_market_previous_close": ["regularMarketPreviousClose"],
+            "fifty_day_average": "fiftyDayAverage",
+            "two_hundred_day_average": "twoHundredDayAverage",
+            "year_change": ["52WeekChange", "fiftyTwoWeekChange"],
+            "year_high": "fiftyTwoWeekHigh",
+            "year_low": "fiftyTwoWeekLow",
+            "last_volume": ["volume", "regularMarketVolume"],
+            "ten_day_average_volume": [
+                "averageVolume10days",
+                "averageDailyVolume10Day",
+            ],
+            "three_month_average_volume": "averageVolume",
+            "market_cap": "marketCap",
+            "shares": "sharesOutstanding",
+        }
         for k in list(key_rename_map.keys()):
             if '_' in k:
                 key_rename_map[yf.utils.snake_case_2_camelCase(k)] = key_rename_map[k]
@@ -746,42 +744,32 @@ class TestTickerInfo(unittest.TestCase):
         bad_keys = {"shares"}
 
         # Loose tolerance for averages, no idea why don't match info[]. Is info wrong?
-        custom_tolerances = {}
-        custom_tolerances["year_change"] = 1.0
-        # custom_tolerances["ten_day_average_volume"] = 1e-3
-        custom_tolerances["ten_day_average_volume"] = 1e-1
-        # custom_tolerances["three_month_average_volume"] = 1e-2
-        custom_tolerances["three_month_average_volume"] = 5e-1
-        custom_tolerances["fifty_day_average"] = 1e-2
-        custom_tolerances["two_hundred_day_average"] = 1e-2
+        custom_tolerances = {
+            "year_change": 1.0,
+            "ten_day_average_volume": 0.1,
+            "three_month_average_volume": 0.5,
+            "fifty_day_average": 0.01,
+            "two_hundred_day_average": 0.01,
+        }
         for k in list(custom_tolerances.keys()):
             if '_' in k:
                 custom_tolerances[yf.utils.snake_case_2_camelCase(k)] = custom_tolerances[k]
 
         for k in fast_info_keys:
-            if k in key_rename_map:
-                k2 = key_rename_map[k]
-            else:
-                k2 = k
-
+            k2 = key_rename_map.get(k, k)
             if not isinstance(k2, list):
                 k2 = [k2]
 
             for m in k2:
                 for ticker in self.tickers:
-                    if not m in ticker.info:
+                    if m not in ticker.info:
                         # print(f"symbol={ticker.ticker}: fast_info key '{k}' mapped to info key '{m}' but not present in info")
                         continue
 
                     if k in bad_keys:
                         continue
 
-                    if k in custom_tolerances:
-                        rtol = custom_tolerances[k]
-                    else:
-                        rtol = 5e-3
-                        # rtol = 1e-4
-
+                    rtol = custom_tolerances.get(k, 5e-3)
                     correct = ticker.info[m]
                     test = ticker.fast_info[k]
                     # print(f"Testing: symbol={ticker.ticker} m={m} k={k}: test={test} vs correct={correct}")

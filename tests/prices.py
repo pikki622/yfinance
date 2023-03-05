@@ -97,7 +97,7 @@ class TestPriceHistory(unittest.TestCase):
             try:
                 self.assertNotEqual(dt0.week, dt1.week)
             except:
-                print("Ticker={}: Last two rows within same week:".format(tkr))
+                print(f"Ticker={tkr}: Last two rows within same week:")
                 print(df.iloc[df.shape[0] - 2:])
                 raise
 
@@ -144,8 +144,8 @@ class TestPriceHistory(unittest.TestCase):
         except:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
-            print("{} missing these dates: {}".format(tkr1, missing_from_df1))
-            print("{} missing these dates: {}".format(tkr2, missing_from_df2))
+            print(f"{tkr1} missing these dates: {missing_from_df1}")
+            print(f"{tkr2} missing these dates: {missing_from_df2}")
             raise
 
         # Test that index same with and without events:
@@ -159,8 +159,8 @@ class TestPriceHistory(unittest.TestCase):
             except:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
-                print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
-                print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
+                print(f"{tkr}-with-events missing these dates: {missing_from_df1}")
+                print(f"{tkr}-without-events missing these dates: {missing_from_df2}")
                 raise
 
     def test_weeklyWithEvents(self):
@@ -178,8 +178,8 @@ class TestPriceHistory(unittest.TestCase):
         except:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
-            print("{} missing these dates: {}".format(tkr1, missing_from_df1))
-            print("{} missing these dates: {}".format(tkr2, missing_from_df2))
+            print(f"{tkr1} missing these dates: {missing_from_df1}")
+            print(f"{tkr2} missing these dates: {missing_from_df2}")
             raise
 
         # Test that index same with and without events:
@@ -193,8 +193,8 @@ class TestPriceHistory(unittest.TestCase):
             except:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
-                print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
-                print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
+                print(f"{tkr}-with-events missing these dates: {missing_from_df1}")
+                print(f"{tkr}-without-events missing these dates: {missing_from_df2}")
                 raise
 
     def test_monthlyWithEvents(self):
@@ -211,8 +211,8 @@ class TestPriceHistory(unittest.TestCase):
         except:
             missing_from_df1 = df2.index.difference(df1.index)
             missing_from_df2 = df1.index.difference(df2.index)
-            print("{} missing these dates: {}".format(tkr1, missing_from_df1))
-            print("{} missing these dates: {}".format(tkr2, missing_from_df2))
+            print(f"{tkr1} missing these dates: {missing_from_df1}")
+            print(f"{tkr2} missing these dates: {missing_from_df2}")
             raise
 
         # Test that index same with and without events:
@@ -226,8 +226,8 @@ class TestPriceHistory(unittest.TestCase):
             except:
                 missing_from_df1 = df2.index.difference(df1.index)
                 missing_from_df2 = df1.index.difference(df2.index)
-                print("{}-with-events missing these dates: {}".format(tkr, missing_from_df1))
-                print("{}-without-events missing these dates: {}".format(tkr, missing_from_df2))
+                print(f"{tkr}-with-events missing these dates: {missing_from_df1}")
+                print(f"{tkr}-without-events missing these dates: {missing_from_df2}")
                 raise
 
     def test_tz_dst_ambiguous(self):
@@ -338,7 +338,9 @@ class TestPriceHistory(unittest.TestCase):
         last_dts = _pd.Series(df.index).groupby(df.index.date).last()
         f_early_close = (last_dts+interval_td).dt.time < time_close
         early_close_dates = last_dts.index[f_early_close].values
-        unexpected_early_close_dates = [d for d in early_close_dates if not d in half_days]
+        unexpected_early_close_dates = [
+            d for d in early_close_dates if d not in half_days
+        ]
         self.assertEqual(len(unexpected_early_close_dates), 0)
         self.assertEqual(len(early_close_dates), len(half_days))
         self.assertTrue(_np.equal(early_close_dates, half_days).all())

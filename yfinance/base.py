@@ -99,13 +99,13 @@ class FastInfo:
 
         # Because released before fixing key case, need to officially support 
         # camel-case but also secretly support snake-case
-        base_keys = [k for k in _properties if not '_' in k]
+        base_keys = [k for k in _properties if '_' not in k]
 
         sc_keys = [k for k in _properties if '_' in k]
 
         self._sc_to_cc_key = {k:utils.snake_case_2_camelCase(k) for k in sc_keys}
         self._cc_to_sc_key = {v:k for k,v in self._sc_to_cc_key.items()}
- 
+
         self._public_keys = sorted(base_keys + list(self._sc_to_cc_key.values()))
         self._keys = sorted(self._public_keys + sc_keys)
 
@@ -124,8 +124,8 @@ class FastInfo:
         return default
     def __getitem__(self, k):
         if not isinstance(k, str):
-            raise KeyError(f"key must be a string")
-        if not k in self._keys:
+            raise KeyError("key must be a string")
+        if k not in self._keys:
             raise KeyError(f"'{k}' not valid key. Examine 'FastInfo.keys()'")
         if k in self._cc_to_sc_key:
             k = self._cc_to_sc_key[k]
@@ -136,7 +136,7 @@ class FastInfo:
         return iter(self.keys())
 
     def __str__(self):
-        return "lazy-loading dict with keys = " + str(self.keys())
+        return f"lazy-loading dict with keys = {str(self.keys())}"
     def __repr__(self):
         return self.__str__()
 
@@ -206,10 +206,7 @@ class FastInfo:
 
         last_day_cutoff = self._get_1y_prices().index[-1] + _datetime.timedelta(days=1)
         last_day_cutoff += _datetime.timedelta(minutes=20)
-        r = t < last_day_cutoff
-
-        # print("_exchange_open_now() returning", r)
-        return r
+        return t < last_day_cutoff
 
     @property
     def currency(self):
@@ -386,8 +383,7 @@ class FastInfo:
             n = prices.shape[0]
             a = n-50
             b = n
-            if a < 0:
-                a = 0
+            a = max(a, 0)
             self._50d_day_average = float(prices["Close"].iloc[a:b].mean())
 
         return self._50d_day_average
@@ -404,9 +400,7 @@ class FastInfo:
             n = prices.shape[0]
             a = n-200
             b = n
-            if a < 0:
-                a = 0
-
+            a = max(a, 0)
             self._200d_day_average = float(prices["Close"].iloc[a:b].mean())
 
         return self._200d_day_average
@@ -423,8 +417,7 @@ class FastInfo:
             n = prices.shape[0]
             a = n-10
             b = n
-            if a < 0:
-                a = 0
+            a = max(a, 0)
             self._10d_avg_vol = int(prices["Volume"].iloc[a:b].mean())
 
         return self._10d_avg_vol
@@ -536,11 +529,9 @@ class TickerBase:
         self._fast_info = FastInfo(self)
 
     def stats(self, proxy=None):
-        ticker_url = "{}/{}".format(self._scrape_url, self.ticker)
+        ticker_url = f"{self._scrape_url}/{self.ticker}"
 
-        # get info and sustainability
-        data = self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
-        return data
+        return self._data.get_json_data_stores(proxy=proxy)["QuoteSummaryStore"]
 
     def history(self, period="1mo", interval="1d",
                 start=None, end=None, prepost=False, actions=True,

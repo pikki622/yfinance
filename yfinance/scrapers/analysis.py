@@ -58,7 +58,7 @@ class Analysis:
             analysis_data = analysis_data['QuoteSummaryStore']
         except KeyError as e:
             err_msg = "No analysis data found, symbol may be delisted"
-            print('- %s: %s' % (self._data.ticker, err_msg))
+            print(f'- {self._data.ticker}: {err_msg}')
             return
 
         if isinstance(analysis_data.get('earningsTrend'), dict):
@@ -78,7 +78,7 @@ class Analysis:
                             dict_cols.append(colname)
                             for k, v in colval.items():
                                 new_colname = colname + ' ' + \
-                                              utils.camel2title([k])[0]
+                                                  utils.camel2title([k])[0]
                                 analysis.loc[idx, new_colname] = v
 
                 self._earnings_trend = analysis[[
@@ -95,9 +95,9 @@ class Analysis:
                 ['targetLowPrice', 'currentPrice', 'targetMeanPrice', 'targetHighPrice', 'numberOfAnalystOpinions']].T
         except Exception as e:
             self._analyst_price_target = None
-        earnings_estimate = []
-        revenue_estimate = []
-        if self._analyst_trend_details is not None :
+        if self._analyst_trend_details is not None:
+            earnings_estimate = []
+            revenue_estimate = []
             for key in analysis_data['earningsTrend']['trend']:
                 try:
                     earnings_dict = key['earningsEstimate']
